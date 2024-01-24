@@ -13,13 +13,21 @@ class Blockchain:
             'index': len(self.chain) + 1,
             'timestamp': str(datetime.datetime.now()),
             'proof': proof,
-            'previous_hash': previous_hash
+            'previous_hash': previous_hash,
+            'hash': self.hash({
+                'index': len(self.chain) + 1,
+                'timestamp': str(datetime.datetime.now()),
+                'proof': proof,
+                'previous_hash': previous_hash
+            })
         }
         self.chain.append(block)
         return block
 
     def get_previous_block(self):
-        return self.chain[-1]
+        if self.chain:
+            return self.chain[-1]
+        return None
 
     def proof_of_work(self, previous_proof):
         new_proof = 1
@@ -37,11 +45,13 @@ class Blockchain:
         return hashlib.sha256(encoded_block).hexdigest()
 
     def is_chain_valid(self, chain):
+        if not chain:
+            return False
         previous_block = chain[0]
         block_index = 1
         while block_index < len(chain):
             block = chain[block_index]
-            if block['previous_hash'] != self.hash(previous_block):
+            if block['previous_hash'] != previous_block['hash']:
                 return False
             previous_proof = previous_block['proof']
             proof = block['proof']
@@ -52,44 +62,38 @@ class Blockchain:
             block_index += 1
         return True
 
-
 app = Flask(__name__)
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
 
 blockchain = Blockchain()
 
-
 @app.route('/mine_block', methods=['GET'])
 def mine_block():
     previous_block = blockchain.get_previous_block()
-    previous_proof = previous_block['proof']
+    previous_proof = previous_block['proof'] if previous_block else 0
     proof = blockchain.proof_of_work(previous_proof)
-    previous_hash = blockchain.hash(previous_block)
-    block = blockchain.create_block(proof, previous_hash)
+    block = blockchain.create_block(proof, previous_block['hash'] if previous_block else '0')
     response = {
         'message': 'Congratulations, you mined a block!',
         'index': block['index'],
         'timestamp': block['timestamp'],
         'proof': block['proof'],
-        'previous_hash': block['previous_hash']
+        'previous_hash': block['previous_hash'],
+        'hash': block['hash']
     }
     return jsonify(response), 200
 
-
 @app.route('/get_chain', methods=['GET'])
 def get_chain():
-    app.logger.debug('Acessou a rota /get_chain')
     response = {
         'chain': blockchain.chain,
         'length': len(blockchain.chain)
     }
     return jsonify(response), 200
 
-
 @app.errorhandler(404)
 def page_not_found(error):
     return jsonify({'error': 'Route not found'}), 404
-
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000)
