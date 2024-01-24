@@ -91,6 +91,15 @@ def get_chain():
     }
     return jsonify(response), 200
 
+@app.route('/is_valid', methods=['GET'])
+def is_valid():
+    is_valid = blockchain.is_chain_valid(blockchain.chain)
+    if is_valid:
+        response = {'message' : 'All safe, the blockchain is valid'}
+    else:
+        response = {'message' : 'ALERT! The blockchain not is valid'}
+    return jsonify(response), 200
+
 @app.errorhandler(404)
 def page_not_found(error):
     return jsonify({'error': 'Route not found'}), 404
